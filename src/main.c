@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <string.h>
 #include "slowlane.h"
 #include "dvb.h"
 #include "si.h"
@@ -24,8 +24,9 @@ int verbose = 0;
 /* Program start. */
 int main (int argc, char *argv[]) {
 	int crc_dvb = 1, crc_internal = 1, dvb_adapter = 0, dvb_demux = 0, dvb_loop = 1;
-	int ch, dvb_demux_fd, dvb_bytes, retval;
+	int ch, dvb_demux_fd, dvb_bytes, retval, dvb_data_length = 0, processed_bytes = 0;
 	char dvb_buffer[DVB_BUFFER_SIZE];
+	char *dvb_data = NULL, *dvb_temp = NULL;
 
 	/* Process command line options. */
 	while ((ch = getopt(argc, argv, "c:C:a:d:hv")) != -1) {
@@ -81,14 +82,44 @@ int main (int argc, char *argv[]) {
 			return EXIT_FAILURE;
 		}
 
-		/* Process SI received. */
-		if (si_process((unsigned char *)dvb_buffer, dvb_bytes, crc_internal) < 0) {
-			slowlane_log(0, "si_process failed and returned %i.", dvb_demux_fd);
-			dvb_close(dvb_demux_fd);
-			return EXIT_FAILURE;
+		/* Copy data into dvb_data. */
+		if (dvb_data == NULL) {
+			slowlane_log(3, "dvb_read read in %i, mallocing memory.", dvb_bytes);
+			dvb_data_length = dvb_bytes;
+			dvb_data = (char *) malloc (dvb_data_length);
+			memcpy(dvb_data, dvb_buffer, dvb_data_length);		
+		} else {
+			slowlane_log(3, "dvb_read read in %i, already %i here, reallocing memory.", dvb_bytes, dvb_data_length);
+			dvb_data = (char *) realloc (dvb_data, dvb_data_length + dvb_bytes);
+			memcpy(dvb_data + dvb_data_length, dvb_buffer, dvb_bytes);
+                        dvb_data_length += dvb_bytes;
 		}
 
-		/* XXX - Rework to handle multiple packets in same or accross reads. sasc-ng breaks the one packet per read rule. */
+		/* Loop while processing function is reporting success, this is needed for some dvb cards or sasc-ng virtual cards which
+		 * don't obey the one packet per read rule. */
+		do {
+			/* Process SI received. */
+			if ((processed_bytes = si_process((unsigned char *)dvb_data, dvb_data_length, crc_internal)) < 0) {
+				slowlane_log(0, "si_process failed and returned %i.", dvb_demux_fd);
+				/* XXX - Decide if we want to dump the buffer after X failed processes. */
+			} else {
+				if (processed_bytes > 0) {
+					if (processed_bytes == dvb_data_length) {
+						slowlane_log(3, "si_process processed whole data of size %i.", processed_bytes);
+						dvb_data_length = 0;
+						free(dvb_data);
+						dvb_data = NULL;
+					} else {
+						slowlane_log(3, "si_process processed less then whole data of size %i out of %i.", processed_bytes, dvb_data_length);
+						dvb_temp = (char *) malloc (dvb_data_length - processed_bytes);
+						memcpy(dvb_temp, dvb_data + processed_bytes, dvb_data_length - processed_bytes);
+						free(dvb_data);
+						dvb_data = dvb_temp;
+						dvb_data_length -= processed_bytes;
+					}
+				}
+			}
+		} while (processed_bytes > 0);
 	}
 
 	/* Set filter for NIT. */

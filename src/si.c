@@ -13,7 +13,7 @@
 #include "si.h"
 #include "crc32.h"
 
-/* Process a SI packet received. Returns -1 serious error, 0 nothing processed, 1+ packets processed. */
+/* Process a SI packet received. Returns -1 serious error, lenght of processed bytes. */
 int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
 	unsigned char table_type;
 	unsigned short table_length;
@@ -54,7 +54,7 @@ int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
 	if (calculated_crc) {
 		/* Again not a critical fault. */
 		slowlane_log(2, "Packet failed CRC check. CRC remaineder was 0x%x.", calculated_crc);
-		return 0;
+		return -1;
 	}
 
 	/* Let user know if they've asked for this level. */
@@ -78,5 +78,5 @@ int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
 			break;
 	}
 
-	return 0;
+	return table_length + 3;
 }
