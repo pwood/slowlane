@@ -2,3 +2,14 @@ Slowlane - Utility to populate and maintain the MythTV channels tables with
 data extracted from the propriatary Media Highway middleware data.
 
 By Peter Wood <peter+slowlane@alastria.net>
+
+Notes:
+
+This program reimplements small sections of the ETSI EN 300 468 specification
+for interpreting Service Information, rather than including libraries such
+as libsi. It's aim is to be a light weight program with little external
+requirements, unless absolutely required (such as MySQL).
+
+It is specifically aimed at the version of Media Highway as used by BSkyB,
+several assumptions and default values may be targetted as such and require
+further configuration for other providers.

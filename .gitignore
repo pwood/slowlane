@@ -1,0 +1,3 @@
+slowlane
+src/*.o
+*.core
