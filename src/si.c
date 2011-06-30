@@ -255,7 +255,7 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
 }
 
 int si_process_descriptors(unsigned char *buffer, int buffer_length) {
-	int position = 0;
+	int position = 0, desc_pos;
 	unsigned char descriptor_id, descriptor_length;
 
 	/* Loop through descriptors. */
@@ -283,6 +283,7 @@ int si_process_descriptors(unsigned char *buffer, int buffer_length) {
 				si_process_descriptor_satellite_delivery_system(buffer+position, descriptor_length);
 				break;
 
+			case 0xc0: /* Hidden Display Name (On Demand Channels + Adult) */
 			case 0x40: /* Network Name */
 			case 0x47: /* Bouquet Name */
 				si_process_descriptor_generic_name(buffer+position, descriptor_length);
@@ -305,10 +306,17 @@ int si_process_descriptors(unsigned char *buffer, int buffer_length) {
 			case 0x4b: /* NVOD Reference. */
 			case 0x4c: /* Time Shifted Service */
 			case 0x5f: /* Private data specifier. */
-			case 0xb2: /* MediaHighway Propriatary - On screen message (Possibly Huffmann) */
+			case 0xb2: /* On screen message (Possibly Huffmann) */
 				break;
 			default:
 				slowlane_log(2, "Unhandled descriptor id %x.", descriptor_id);
+			
+				if (verbose > 2) {
+					for (desc_pos = 0; desc_pos < descriptor_length; desc_pos++) {
+						printf("%x ", (buffer+position)[desc_pos]);
+					}
+					printf("\n");
+				}
 				break;
 		}
 
@@ -356,7 +364,7 @@ int si_process_descriptor_service(unsigned char *buffer, int buffer_length) {
         service_name[service_name_length] = '\0';
         position += service_name_length;
 
-	slowlane_log(3, "Descriptor: Name: %s Provider: %s Type 0x%x", service_name, service_provider_name, service_type);
+	slowlane_log(3, "Descriptor: Name: %s Provider: %s Type: 0x%x", service_name, service_provider_name, service_type);
 
 	return 0;
 }
