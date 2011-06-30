@@ -100,8 +100,12 @@ int main (int argc, char *argv[]) {
 		do {
 			/* Process SI received. */
 			if ((processed_bytes = si_process((unsigned char *)dvb_data, dvb_data_length, crc_internal)) < 0) {
-				slowlane_log(0, "si_process failed and returned %i.", dvb_demux_fd);
-				/* XXX - Decide if we want to dump the buffer after X failed processes. */
+				slowlane_log(0, "si_process failed and returned %i.", processed_bytes);
+
+				/* Dump data and flush buffer. */
+				free(dvb_data);
+				dvb_data = NULL;
+				dvb_data_length = 0;
 			} else {
 				if (processed_bytes > 0) {
 					if (processed_bytes == dvb_data_length) {
@@ -119,7 +123,7 @@ int main (int argc, char *argv[]) {
 					}
 				}
 			}
-		} while (processed_bytes > 0);
+		} while (processed_bytes < dvb_data_length && processed_bytes > 0);
 	}
 
 	/* Set filter for NIT. */
