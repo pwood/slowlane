@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
 	/* XXX - Two loops will be needed here, once to obtain the BAT and SDT, then once again for the NIT. */
 
 	/* Set filter for BAT and SDT. */
-	if ((retval = dvb_set_filter(dvb_demux_fd, 0x0011, 0x40, 0xf0, crc_dvb)) < 0) {
+	if ((retval = dvb_set_filter(dvb_demux_fd, 0x0010, 0x40, 0xf0, crc_dvb)) < 0) {
 		slowlane_log(0, "BAT/DST dvb_set_filter failed and returned %i.", retval);
 		return EXIT_FAILURE;
 	}

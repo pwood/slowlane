@@ -3,7 +3,7 @@ CC=gcc
 
 INCLUDEDIR=-I../include
 
-SOURCES=main.c crc32.c dvb.c si.c
+SOURCES=main.c crc32.c dvb.c si.c data.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=slowlane
 

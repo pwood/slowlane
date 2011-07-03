@@ -407,11 +407,11 @@ int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length)
 }
 
 int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int buffer_length) {
-	unsigned short region, service_id, channel_id, user_id, flags;
-	unsigned char type;
+	unsigned short service_id, channel_id, user_id, flags;
+	unsigned char type, region;
 	int position = 0;
 
-	region = (buffer[0] << 8) | buffer[1];
+	region = buffer[1];
 	slowlane_log(3, "OpenTV Region: %i", region);
 
 	position += 2;
