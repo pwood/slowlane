@@ -117,4 +117,24 @@ typedef struct tNetwork {
 extern Network *network_list;
 extern Bouquet *bouquet_list;
 
+Network * network_get (unsigned short network_id);
+void network_add (Network *new_ptr);
+Network * network_new (void);
+
+Transport * transport_get (Network *network_ptr, unsigned short transport_id);
+void transport_add (Network *network_ptr, Transport *new_ptr);
+Transport * transport_new (void);
+
+Service * service_get (Transport *transport_ptr, unsigned short service_id);
+void service_add (Transport *transport_ptr, Service *new_ptr);
+Service * service_new (void);
+
+Bouquet * bouquet_get (unsigned short bouquet_id);
+void bouquet_add (Bouquet *new_ptr);
+Bouquet * bouquet_new (void);
+
+OpenTVChannel * opentv_channel_get (Bouquet *bouquet_ptr, unsigned short channel_number);
+void opentv_channel_add (Bouquet *bouquet_ptr, OpenTVChannel *new_ptr);
+OpenTVChannel * opentv_channel_new (void);
+
 #endif
