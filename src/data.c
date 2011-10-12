@@ -57,6 +57,21 @@ Transport * transport_get (Network *network_ptr, unsigned short transport_id) {
 	return NULL;
 }
 
+Transport * transport_get_with_original_network_id (unsigned short original_network_id, unsigned short transport_id) {
+	Network *network_ptr;
+	Transport *transport_ptr;
+
+	for (network_ptr = network_list; network_ptr != NULL; network_ptr = network_ptr->next) {
+		for (transport_ptr = network_ptr->transports; transport_ptr != NULL; transport_ptr = transport_ptr->next) {
+			if (transport_ptr->transport_id == transport_id && transport_ptr->original_network_id == original_network_id) {
+				return transport_ptr;
+			}
+		}
+	}
+
+	return NULL;
+}
+
 void transport_add (Network *network_ptr, Transport *new_ptr) {
 	if (network_ptr->transports == NULL) {
 		new_ptr->next = NULL;
@@ -160,3 +175,13 @@ OpenTVChannel * opentv_channel_new (void) {
         return opentv_channel_ptr;
 }
 
+int section_tracking_check (SectionTracking *section_tracking) {
+	int i = 0;
+	
+	for (i = 0; i < section_tracking->last_section; i++) {
+		if (section_tracking->received_section[i] == 0)
+			return 0;
+	}
+
+	return 1;
+}

@@ -11,9 +11,11 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "slowlane.h"
 #include "dvb.h"
 #include "si.h"
+#include "data.h"
 
 /* Local definitions. */
 void usage (void);
@@ -23,13 +25,16 @@ int verbose = 0;
 
 /* Program start. */
 int main (int argc, char *argv[]) {
-	int crc_dvb = 1, crc_internal = 1, dvb_adapter = 0, dvb_demux = 0, dvb_loop = 1;
-	int ch, dvb_demux_fd, dvb_bytes, retval, dvb_data_length = 0, processed_bytes = 0;
+	int crc_dvb = 1, crc_internal = 1, dvb_adapter = 0, dvb_demux = 0, dvb_loop = 1, loop_time = 10;
+	int ch, dvb_demux_fd, dvb_bytes, retval, dvb_data_length = 0, processed_bytes = 0, done = 0;
+	time_t dvb_loop_start;
 	char dvb_buffer[DVB_BUFFER_SIZE];
 	char *dvb_data = NULL, *dvb_temp = NULL;
+	Network *network;
+	Transport *transport;
 
 	/* Process command line options. */
-	while ((ch = getopt(argc, argv, "c:C:a:d:hv")) != -1) {
+	while ((ch = getopt(argc, argv, "c:C:a:d:l:hv")) != -1) {
 		switch (ch) {
 			case 'c':
 				crc_dvb = atoi(optarg);
@@ -51,6 +56,10 @@ int main (int argc, char *argv[]) {
 				verbose++;
 				slowlane_log(0, "verbose set to %i.", verbose);
 				break;
+			case 'l':
+                                loop_time = atoi(optarg);
+                                slowlane_log(3, "loop_time set to %i.", loop_time);
+                                break;
 			case 'h':
 			default:
 				usage();
@@ -65,19 +74,14 @@ int main (int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	/* XXX - Two loops will be needed here, once to obtain the BAT and SDT, then once again for the NIT. */
-
-	/* Set filter for BAT and SDT. */
-	if ((retval = dvb_set_filter(dvb_demux_fd, 0x0011, 0x40, 0xf0, crc_dvb)) < 0) {
-		slowlane_log(0, "BAT/DST dvb_set_filter failed and returned %i.", retval);
-		return EXIT_FAILURE;
-	}
-
 	/* Set filter for NIT. */
 	if ((retval = dvb_set_filter(dvb_demux_fd, 0x0010, 0x40, 0xf0, crc_dvb)) < 0) {
 		slowlane_log(0, "NIT dvb_set_filter failed and returned %i.", retval);
 		return EXIT_FAILURE;
 	}
+
+	/* Record when we start this loop.*/
+	dvb_loop_start = time(NULL);
 
 	/* Loop obtaining packets until we have enough. */
 	while (dvb_loop) {
@@ -130,6 +134,41 @@ int main (int argc, char *argv[]) {
 				}
 			}
 		} while (processed_bytes < dvb_data_length && processed_bytes > 0);
+
+		if (dvb_loop == 1) {
+			/* Verify if timeout has expired. */
+			if (time(NULL) > dvb_loop_start + loop_time) {
+				/* Verify if all present networks are complete. */
+				done = 1;
+
+				for (network = network_list; network != NULL; network = network->next) {
+					if (!section_tracking_check(&network->sections)) {
+						done = 0;
+					}
+				}
+
+				if (done) {
+					/* Inform the user. */
+					slowlane_log(2, "NIT tables complete (%i), moving to BAT and DST tables.", dvb_loop);
+
+					/* Set filter for BAT and SDT. */
+					if ((retval = dvb_set_filter(dvb_demux_fd, 0x0011, 0x40, 0xf0, crc_dvb)) < 0) {
+						slowlane_log(0, "BAT/DST dvb_set_filter failed and returned %i.", retval);
+						return EXIT_FAILURE;
+					}
+
+					/* Essentially starting the loop again. */
+				        dvb_loop_start = time(NULL);
+					dvb_loop = 2;
+				}
+			}
+		} else {
+			/* Services and Bouquet Loop. */
+			if (1 == 0) {
+				dvb_loop = 0;
+				break;
+			}
+		}
 	}
 
 	/* Close fd now we're done. */
@@ -149,5 +188,6 @@ void usage (void) {
 	printf("\t-C <flag>\tCRC Check (Internal) (0 = Off, 1 = On <default>)\n");
 	printf("\t-a <number>\tDVB Adapter Number (<default = 0>)\n");
 	printf("\t-d <number>\tDVB Demux Number (<default = 0>)\n");
+	printf("\t-l <seconds>\tMinimum Seconds on DVB Loop (<default = 10>)\n");
 	printf("\t-v\t\tIncrement Verbose Level (<default = 0>)\n");
 }

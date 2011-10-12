@@ -9,15 +9,17 @@
 #ifndef __SI_H_
 #define __SI_H_ 1
 
+#include "data.h"
+
 int si_process(unsigned char *buffer, int buffer_length, int internal_crc);
 int si_process_nit(unsigned char *buffer, int buffer_length);
 int si_process_sdt(unsigned char *buffer, int buffer_length);
 int si_process_bat(unsigned char *buffer, int buffer_length);
-int si_process_descriptors(unsigned char *buffer, int buffer_length);
-int si_process_descriptor_service(unsigned char *buffer, int buffer_length);
+int si_process_descriptors(unsigned char *buffer, int buffer_length, void *object);
+int si_process_descriptor_service(unsigned char *buffer, int buffer_length, Service *service);
 int si_process_descriptor_country_availability(unsigned char *buffer, int buffer_length);
-int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length);
+int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length, char **name);
 int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int buffer_length);
-int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int buffer_length);
+int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int buffer_length, Transport *transport);
 
 #endif

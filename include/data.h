@@ -19,6 +19,9 @@ typedef struct tSectionTracking {
 
 	/* Which sections have been received. */
 	unsigned char	received_section[0xff];
+
+	/* Is this populated yet? */
+	unsigned char	populated;
 } SectionTracking;
 
 /* Entries required for storing BAT details. */
@@ -122,6 +125,7 @@ void network_add (Network *new_ptr);
 Network * network_new (void);
 
 Transport * transport_get (Network *network_ptr, unsigned short transport_id);
+Transport * transport_get_with_original_network_id (unsigned short original_network_id, unsigned short transport_id);
 void transport_add (Network *network_ptr, Transport *new_ptr);
 Transport * transport_new (void);
 
@@ -136,5 +140,7 @@ Bouquet * bouquet_new (void);
 OpenTVChannel * opentv_channel_get (Bouquet *bouquet_ptr, unsigned short channel_number);
 void opentv_channel_add (Bouquet *bouquet_ptr, OpenTVChannel *new_ptr);
 OpenTVChannel * opentv_channel_new (void);
+
+int section_tracking_check (SectionTracking *section_tracking);
 
 #endif

@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 #include "slowlane.h"
 #include "si.h"
 #include "crc32.h"
@@ -78,7 +80,7 @@ int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
 
 		case 0x4a: /* Bouquet Association Table */
 			slowlane_log(3, "Packet identified as BAT, passing %i bytes to si_process_bat.", table_length);
-			si_process_bat(buffer + 3, table_length);
+	/*		si_process_bat(buffer + 3, table_length);*/
 			break;
 
 		default:
@@ -95,6 +97,7 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
 	unsigned char version, section_number, last_section_number;
 	int position;
 	Network *network;
+	Transport *transport;
 
 	/* Sanity check. */
 	if (buffer_length <= 7) {
@@ -128,6 +131,7 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
 
 	if (network->sections.received_section[section_number]) {
 		slowlane_log(3, "Section already received (%i)", section_number);
+		return 0;
 	} else {
 		network->sections.received_section[section_number] = 1;
 		slowlane_log(3, "New section received (%i)", section_number);
@@ -137,7 +141,7 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
 	position = 7;
 
 	/* Process descriptors */
-	si_process_descriptors(buffer+position, network_descriptors_length);
+	si_process_descriptors(buffer+position, network_descriptors_length, network);
 	position += network_descriptors_length;
 
         /* Get size of the next loop. */
@@ -161,9 +165,15 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
 		/* Display TS details. */
 		slowlane_log(3, "Network TS ID: %i Original Network ID: %i", transport_stream_id, original_network_id);
 
+		transport = transport_new();
+		transport->original_network_id = original_network_id;
+		transport->transport_id = transport_stream_id;
+
 		/* Fetch TS details. */
-		si_process_descriptors(buffer+position, transport_descriptors_length);
+		si_process_descriptors(buffer+position, transport_descriptors_length, transport);
 		position += transport_descriptors_length;
+
+		transport_add(network, transport);
 	}	
 
 	return 0;
@@ -174,6 +184,8 @@ int si_process_sdt(unsigned char *buffer, int buffer_length) {
 	unsigned short transport_stream_id, original_network_id, service_id, descriptors_loop_length;
 	unsigned char version, section_number, last_section_number, running_mode, free_ca_mode;
 	int position;
+	Transport *transport;
+	Service *service;
 
 	/* Sanity check. */
 	if (buffer_length <= 8) {
@@ -190,6 +202,29 @@ int si_process_sdt(unsigned char *buffer, int buffer_length) {
 
 	/* Display basic SDT data. */
 	slowlane_log(3, "SDT: TS_ID: %i Version: %i Section: %i Last: %i Original Net: %i", transport_stream_id, version, section_number, last_section_number, original_network_id);
+
+	/* Find transport. */
+	transport = transport_get_with_original_network_id(original_network_id, transport_stream_id);
+
+	if (!transport) {
+		slowlane_log(1, "Could not find transport for TS %i on ONID %i!", transport_stream_id, original_network_id);
+		return -1;
+	} else {
+		if (transport->sections.populated == 0) {
+			transport->sections.last_section = last_section_number;
+			transport->sections.version = version;
+		} else if (transport->sections.version != version) {
+	                slowlane_log(1, "Warning version of SDT has changed! Previous is %i and now %i!", transport->sections.version, version);
+		}
+	}
+
+	if (transport->sections.received_section[section_number]) {
+		slowlane_log(3, "Section already received (%i)", section_number);
+		return 0;
+	} else {
+		transport->sections.received_section[section_number] = 1;
+		slowlane_log(3, "New section received (%i)", section_number);
+	}
 
 	/* Set processing position at the end of the header. */
 	position = 8;
@@ -210,11 +245,17 @@ int si_process_sdt(unsigned char *buffer, int buffer_length) {
 		/* Display service found. */
 		slowlane_log(3, "SDT: Service: %i Running: %i Free CA: %i Descriptors: %i", service_id, running_mode, free_ca_mode, descriptors_loop_length);
 
+		service = service_new();
+		service->service_id = service_id;
+		service->running = running_mode;
+		service->free_ca = free_ca_mode;
+		service_add(transport, service);
+
 		/* Move position on beyond service header. */
 		position += 5;
 
 		/* Process descriptors */
-		si_process_descriptors(buffer+position, descriptors_loop_length);
+		si_process_descriptors(buffer+position, descriptors_loop_length, service);
 		position += descriptors_loop_length;
 	}
 
@@ -246,7 +287,7 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
         position = 7;
 
 	/* Process descriptors */
-	si_process_descriptors(buffer+position, bouquet_descriptors_length);
+	si_process_descriptors(buffer+position, bouquet_descriptors_length, NULL);
 	position += bouquet_descriptors_length;
 
 	/* Get size of the next loop. */
@@ -271,14 +312,14 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
 	        slowlane_log(3, "Bouquet Stream: Transport ID: %i Original Network: %i", transport_stream_id, original_network_id);
 
 		/* Extract descriptors. */
-                si_process_descriptors(buffer+position, transport_descriptors_length);
+                si_process_descriptors(buffer+position, transport_descriptors_length, NULL);
 		position += transport_descriptors_length;
 	}
 
 	return 0;
 }
 
-int si_process_descriptors(unsigned char *buffer, int buffer_length) {
+int si_process_descriptors(unsigned char *buffer, int buffer_length, void *object) {
 	int position = 0, desc_pos;
 	unsigned char descriptor_id, descriptor_length;
 
@@ -304,17 +345,23 @@ int si_process_descriptors(unsigned char *buffer, int buffer_length) {
 
 		switch(descriptor_id) {
 			case 0x43: /* Satellite Delivery System */
-				si_process_descriptor_satellite_delivery_system(buffer+position, descriptor_length);
+				si_process_descriptor_satellite_delivery_system(buffer+position, descriptor_length, (Transport *) object);
 				break;
 
 			case 0xc0: /* Hidden Display Name (On Demand Channels + Adult) */
+				si_process_descriptor_generic_name(buffer+position, descriptor_length, &(((Service *) object)->alt_name));
+				break;
+
 			case 0x40: /* Network Name */
+				si_process_descriptor_generic_name(buffer+position, descriptor_length, &(((Network *) object)->name));
+				break;
+
 			case 0x47: /* Bouquet Name */
-				si_process_descriptor_generic_name(buffer+position, descriptor_length);
+				si_process_descriptor_generic_name(buffer+position, descriptor_length, &(((Bouquet *) object)->name));
 				break;
 
 			case 0x48: /* Service Descriptor */
-				si_process_descriptor_service(buffer+position, descriptor_length);
+				si_process_descriptor_service(buffer+position, descriptor_length, (Service *) object);
 				break;
 
 			case 0x49: /* Country Available */
@@ -350,7 +397,7 @@ int si_process_descriptors(unsigned char *buffer, int buffer_length) {
 	return 0;
 }
 
-int si_process_descriptor_service(unsigned char *buffer, int buffer_length) {
+int si_process_descriptor_service(unsigned char *buffer, int buffer_length, Service *service) {
 	int position = 0;
 	unsigned char service_type, service_provider_name_length, service_name_length;
 	char service_provider_name[256], service_name[256];
@@ -390,6 +437,10 @@ int si_process_descriptor_service(unsigned char *buffer, int buffer_length) {
 
 	slowlane_log(3, "Descriptor: Name: %s Provider: %s Type: 0x%x", service_name, service_provider_name, service_type);
 
+	service->name = strdup(service_name);
+	service->provider = strdup(service_provider_name);
+	service->type = service_type;
+
 	return 0;
 }
 
@@ -419,13 +470,19 @@ int si_process_descriptor_country_availability(unsigned char *buffer, int buffer
         return 0;
 }
 
-int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length) {
+int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length, char **obj_name) {
 	char name[256];
 
 	memcpy(&name, buffer, buffer_length);
 	name[buffer_length] = '\0';
 
 	slowlane_log(3, "Name: %s", name);
+
+	if (*obj_name) {
+		free(*obj_name);
+	}
+
+	(*obj_name) = strdup(name);
 
 	return 0;
 }
@@ -460,12 +517,12 @@ int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int 
 	return 0;
 }
 
-int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int buffer_length) {
+int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int buffer_length, Transport *transport) {
 	unsigned int frequency = 0, symbol_rate = 0, tmp;
 	unsigned short orbital_position = 0;
-	unsigned char west_easy_flag, polarization, roll_off, modulation_system, modulation_type, fec, pos, bcd;
+	unsigned char west_east_flag, polarization, roll_off, modulation_system, modulation_type, fec, pos, bcd;
 
-	/* Calculate frequency from BSD. */
+	/* Calculate frequency from BCD. */
 
 	tmp = (buffer[0] << 24) + (buffer[1] << 16) + (buffer[2] << 8) + buffer[3];
 
@@ -485,7 +542,7 @@ int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int b
                 orbital_position += bcd;
         }
 
-	west_easy_flag = (buffer[6] & 0x80) >> 7;
+	west_east_flag = (buffer[6] & 0x80) >> 7;
 	polarization = (buffer[6] & 0x60) >> 5;
 	roll_off = (buffer[6] & 0x18) >> 3;
 	modulation_system = (buffer[6] & 0x04) >> 2;
@@ -502,7 +559,17 @@ int si_process_descriptor_satellite_delivery_system(unsigned char *buffer, int b
 
 	fec = (buffer[10] & 0x0f);
 
-	slowlane_log(3, "SDS: Freq: %i Symbol: %i Orbit: %i West/East: %i Polorization: %i Roll Off: %i ModSys: %i ModType: %i FEC: %i", frequency, symbol_rate, orbital_position, west_easy_flag, polarization, roll_off, modulation_system, modulation_type, fec);
+	slowlane_log(3, "SDS: Freq: %i Symbol: %i Orbit: %i West/East: %i Polorization: %i Roll Off: %i ModSys: %i ModType: %i FEC: %i", frequency, symbol_rate, orbital_position, west_east_flag, polarization, roll_off, modulation_system, modulation_type, fec);
+
+	transport->modulation_system = modulation_system;
+	transport->frequency = frequency;
+	transport->symbol_rate = symbol_rate;
+	transport->polarization = polarization;
+	transport->modulation_type = modulation_type;
+	transport->fec = fec;
+	transport->roll_off = roll_off;
+	transport->orbital_position = orbital_position;
+	transport->west_east_flag = west_east_flag;
 
 	return 0;
 }
