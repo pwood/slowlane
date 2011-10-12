@@ -91,7 +91,7 @@ typedef struct tTransport {
 	unsigned int	frequency;
 	unsigned int	symbol_rate;
 	unsigned char	polarization;
-	unsigned char	moduleation_type;
+	unsigned char	modulation_type;
 	unsigned char	fec;
 	unsigned char	roll_off;
 

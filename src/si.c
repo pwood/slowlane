@@ -13,6 +13,7 @@
 #include "slowlane.h"
 #include "si.h"
 #include "crc32.h"
+#include "data.h"
 
 /* Process a SI packet received. Returns -1 serious error, lenght of processed bytes. */
 int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
@@ -93,6 +94,7 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
 	unsigned short network_id, network_descriptors_length, transport_stream_loop_length, transport_stream_id, original_network_id, transport_descriptors_length;
 	unsigned char version, section_number, last_section_number;
 	int position;
+	Network *network;
 
 	/* Sanity check. */
 	if (buffer_length <= 7) {
@@ -106,8 +108,30 @@ int si_process_nit(unsigned char *buffer, int buffer_length) {
         last_section_number = buffer[4];
 	network_descriptors_length = ((buffer[5] & 0x0f) << 8) | buffer[6];
 
-        /* Display basic Bouquet data. */
+        /* Display basic Nit data. */
         slowlane_log(3, "Network: ID: %i Version: %i Section: %i Last: %i", network_id, version, section_number, last_section_number);
+
+	/* Find network. */
+	network = network_get(network_id);
+
+	if (!network) {
+		network = network_new();
+		network->network_id = network_id;
+		network->sections.last_section = last_section_number;
+		network->sections.version = version;
+		network_add(network);
+	} else {
+		if (network->sections.version != version) {
+	                slowlane_log(1, "Warning version of NIT has changed! Previous is %i and now %i!", network->sections.version, version);
+		}
+	}
+
+	if (network->sections.received_section[section_number]) {
+		slowlane_log(3, "Section already received (%i)", section_number);
+	} else {
+		network->sections.received_section[section_number] = 1;
+		slowlane_log(3, "New section received (%i)", section_number);
+	}
 
 	/* Set processing position at the end of the header. */
 	position = 7;
