@@ -178,7 +178,7 @@ OpenTVChannel * opentv_channel_new (void) {
 int section_tracking_check (SectionTracking *section_tracking) {
 	int i = 0;
 	
-	for (i = 0; i < section_tracking->last_section; i++) {
+	for (i = 0; i <= section_tracking->last_section; i++) {
 		if (section_tracking->received_section[i] == 0)
 			return 0;
 	}

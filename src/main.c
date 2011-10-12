@@ -163,10 +163,26 @@ int main (int argc, char *argv[]) {
 				}
 			}
 		} else {
-			/* Services and Bouquet Loop. */
-			if (1 == 0) {
-				dvb_loop = 0;
-				break;
+			/* Verify if timeout has expired. */
+			if (time(NULL) > dvb_loop_start + loop_time) {
+				/* Verify if all present networks are complete. */
+				done = 1;
+
+				for (network = network_list; network != NULL; network = network->next) {
+					for (transport = network->transports; transport != NULL; transport = transport->next) {
+						if (transport->sections.populated == 0 || !section_tracking_check(&transport->sections)) {
+							done = 0;
+						}
+					}
+				}
+
+				if (done) {
+					/* Inform the user. */
+					slowlane_log(2, "BAT and DST tables complete (%i).", dvb_loop);
+
+					dvb_loop = 0;
+					break;
+				}
 			}
 		}
 	}

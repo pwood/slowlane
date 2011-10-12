@@ -213,6 +213,7 @@ int si_process_sdt(unsigned char *buffer, int buffer_length) {
 		if (transport->sections.populated == 0) {
 			transport->sections.last_section = last_section_number;
 			transport->sections.version = version;
+			transport->sections.populated = 1;
 		} else if (transport->sections.version != version) {
 	                slowlane_log(1, "Warning version of SDT has changed! Previous is %i and now %i!", transport->sections.version, version);
 		}
