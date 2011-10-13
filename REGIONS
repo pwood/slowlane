@@ -1,0 +1,56 @@
+Borrowed from EPG Collector project, downloaded 13th of October 2011.
+http://sourceforge.net/projects/epgcollector/files/v2.0.16/
+License is unclear, please contact Peter Wood <peter+slowlane@alastria.net> if this is a problem.
+
+1.2 UK (OpenTV)
+===============
+
+Channel:4097,14		// England (BBC) - Border & NW (ITV)
+Channel:4097,12		// England (BBC) - Border (ITV)
+Channel:4097,29		// England (BBC) - E Mid & Yorkshire (ITV)
+Channel:4097,27		// England (BBC) - E London & Midlands (ITV)
+Channel:4097,18		// England (BBC) - East London & SE (ITV)
+Channel:4097,25		// England (BBC) - East & Midlands (ITV)
+Channel:4097,21		// England (BBC) - East & Yorkshire (ITV)
+Channel:4097,2		// England (BBC) - East (ITV)
+Channel:4097,11		// England (BBC) - London & SE (ITV)
+Channel:4097,9		// England (BBC) - London & South (ITV)
+Channel:4097,1		// England (BBC) - London (ITV)
+Channel:4097,19		// England (BBC) - Midlands & NW (ITV)
+Channel:4097,24		// England (BBC) - Midlands & West (ITV)
+Channel:4097,3		// England (BBC) - Midlands (ITV)
+Channel:4097,20		// England (BBC) - Midlands & Yorkshire (ITV)
+Channel:4097,26		// England (BBC) - NE & Yorkshire (ITV)
+Channel:4097,17		// England (BBC) - NW & Wales (ITV)
+Channel:4097,13		// England (BBC) - North East (ITV)
+Channel:4097,7		// England (BBC) - North West (ITV)
+Channel:4097,5		// England (BBC) - South (ITV)
+Channel:4097,10		// England (BBC) - South East (ITV)
+Channel:4097,6		// England (BBC) - South West (ITV)
+Channel:4097,4		// England (BBC) - West (ITV)
+Channel:4097,8		// England (BBC) - Yorkshire (ITV)
+Channel:4099,73		// England 2 - Isle Of Man
+Channel:4099,65		// England 2 - Brighton
+Channel:4099,63		// England 2 - HTV W/Thames Valley
+Channel:4099,70		// England 2 - Henley On Thames
+Channel:4099,66		// England 2 - London / Thames Valley
+Channel:4099,64		// England 2 - London Kent
+Channel:4099,68		// England 2 - Meridian North
+Channel:4099,62		// England 2 - North East Midlands
+Channel:4099,71		// England 2 - Oxford
+Channel:4099,61		// England 2 - Scarborough (bc)
+Channel:4099,60		// England 2 - Sheffield (au)
+Channel:4099,72		// England 2 - South Yorkshire
+Channel:4099,69		// England 2 - Tees
+Channel:4099,67		// England 2 - West Dorset
+Channel:4099,41		// Wales (BBC) - Midlands (ITV)
+Channel:4099,42		// Wales (BBC) - North West (ITV)
+Channel:4099,43		// Wales (BBC) - Wales (ITV)
+Channel:4099,45		// Wales (BBC) - NW & Wales (ITV)
+Channel:4100,33		// Northern Ireland(BBC & ITV)
+Channel:4100,34		// Channel Isles(ITV)
+Channel:4100,50		// Republic of Ireland 4100
+Channel:4098,36		// Scotland (BBC) - Border (ITV)
+Channel:4098,38		// Scotland (BBC) - C Scot & N Scot (ITV)
+Channel:4098,37		// Scotland (BBC) - Central Scotland (ITV)
+Channel:4098,35		// Scotland (BBC) - North Scotland (ITV)
