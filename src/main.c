@@ -32,6 +32,9 @@ int main (int argc, char *argv[]) {
 	char *dvb_data = NULL, *dvb_temp = NULL;
 	Network *network;
 	Transport *transport;
+	Bouquet *bouquet;
+	Service *service;
+	OpenTVChannel *channel;
 
 	/* Process command line options. */
 	while ((ch = getopt(argc, argv, "c:C:a:d:l:hv")) != -1) {
@@ -176,6 +179,12 @@ int main (int argc, char *argv[]) {
 					}
 				}
 
+				for (bouquet = bouquet_list; bouquet != NULL; bouquet = bouquet->next) {
+					if (!section_tracking_check(&bouquet->sections)) {
+						done = 0;
+					}
+				}
+
 				if (done) {
 					/* Inform the user. */
 					slowlane_log(2, "BAT and DST tables complete (%i).", dvb_loop);
@@ -189,6 +198,22 @@ int main (int argc, char *argv[]) {
 
 	/* Close fd now we're done. */
 	dvb_close(dvb_demux_fd);
+
+	for (network = network_list; network != NULL; network = network->next) {
+		printf("Net %s\n", network->name);
+		for (transport = network->transports; transport != NULL; transport = transport->next) {
+			printf(" - Transport %i\n", transport->frequency);
+			for (service = transport->services; service != NULL; service = service->next) {
+				printf(" - - Service %i - %s\n", service->service_id, service->name);
+			}
+		}
+	}
+
+	for (bouquet = bouquet_list; bouquet != NULL; bouquet = bouquet->next) {
+		for (channel = bouquet->channels; channel != NULL; channel = channel->next) {
+				printf("%s,%i,%i,%i,%i,%i,%i,%i,%i,%i\n", bouquet->name, bouquet->bouquet_id, channel->transport_id, channel->original_network_id, channel->service_id, channel->region, channel->type, channel->channel_number, channel->user_number, channel->flags);
+		}
+	}
 
 	/* XXX - Process BAT/SMT data to form channnel list. */
 	/* XXX - Update MySQL database with it. */

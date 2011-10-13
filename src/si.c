@@ -80,7 +80,7 @@ int si_process(unsigned char *buffer, int buffer_length, int internal_crc) {
 
 		case 0x4a: /* Bouquet Association Table */
 			slowlane_log(3, "Packet identified as BAT, passing %i bytes to si_process_bat.", table_length);
-	/*		si_process_bat(buffer + 3, table_length);*/
+			si_process_bat(buffer + 3, table_length);
 			break;
 
 		default:
@@ -268,6 +268,8 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
 	unsigned short bouquet_id, bouquet_descriptors_length, transport_stream_loop_length, transport_stream_id, original_network_id, transport_descriptors_length;
 	unsigned char version, section_number, last_section_number;
 	int position;
+	Bouquet *bouquet;
+	OpenTVChannel *channel;
 
 	/* Sanity check. */
 	if (buffer_length <= 7) {
@@ -284,11 +286,34 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
         /* Display basic Bouquet data. */
         slowlane_log(3, "Bouquet: ID: %i Version: %i Section: %i Last: %i", bouquet_id, version, section_number, last_section_number);
 
+	/* Find bouquet. */
+	bouquet = bouquet_get(bouquet_id);
+
+	if (!bouquet) {
+		bouquet = bouquet_new();
+		bouquet->bouquet_id = bouquet_id;
+		bouquet->sections.last_section = last_section_number;
+		bouquet->sections.version = version;
+		bouquet_add(bouquet);
+	} else {
+		if (bouquet->sections.version != version) {
+	                slowlane_log(1, "Warning version of BAT has changed! Previous is %i and now %i!", bouquet->sections.version, version);
+		}
+	}
+
+	if (bouquet->sections.received_section[section_number]) {
+		slowlane_log(3, "Section already received (%i)", section_number);
+		return 0;
+	} else {
+		bouquet->sections.received_section[section_number] = 1;
+		slowlane_log(3, "New section received (%i)", section_number);
+	}
+
         /* Set processing position at the end of the header. */
         position = 7;
 
 	/* Process descriptors */
-	si_process_descriptors(buffer+position, bouquet_descriptors_length, NULL);
+	si_process_descriptors(buffer+position, bouquet_descriptors_length, bouquet);
 	position += bouquet_descriptors_length;
 
 	/* Get size of the next loop. */
@@ -312,8 +337,13 @@ int si_process_bat(unsigned char *buffer, int buffer_length) {
         	/* Display stream Bouquet data. */
 	        slowlane_log(3, "Bouquet Stream: Transport ID: %i Original Network: %i", transport_stream_id, original_network_id);
 
+		channel = opentv_channel_new();
+		channel->transport_id = transport_stream_id;
+		channel->original_network_id = original_network_id;
+		channel->bouquet = bouquet;
+
 		/* Extract descriptors. */
-                si_process_descriptors(buffer+position, transport_descriptors_length, NULL);
+                si_process_descriptors(buffer+position, transport_descriptors_length, channel);
 		position += transport_descriptors_length;
 	}
 
@@ -370,7 +400,7 @@ int si_process_descriptors(unsigned char *buffer, int buffer_length, void *objec
 				break;
 
 			case 0xb1: /* MediaHighway Propriatary - Channel Information. */
-				si_process_descriptor_opentv_channel_information(buffer+position, descriptor_length);
+				si_process_descriptor_opentv_channel_information(buffer+position, descriptor_length, (OpenTVChannel *) object);
 				break;
 
 			case 0x41: /* Service link. */
@@ -488,11 +518,19 @@ int si_process_descriptor_generic_name(unsigned char *buffer, int buffer_length,
 	return 0;
 }
 
-int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int buffer_length) {
-	unsigned short service_id, channel_id, user_id, flags;
+int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int buffer_length, OpenTVChannel *channel) {
+	unsigned short service_id, channel_id, user_id, flags, transport_id, original_network_id;
 	unsigned char type, region;
 	int position = 0;
+	Bouquet *bouquet;
+        OpenTVChannel *our_channel;
 
+	transport_id = channel->transport_id;
+	original_network_id = channel->original_network_id;
+	bouquet = channel->bouquet;
+
+/*	free(channel);
+*/
 	region = buffer[1];
 	slowlane_log(3, "OpenTV Region: %i", region);
 
@@ -511,6 +549,19 @@ int si_process_descriptor_opentv_channel_information(unsigned char *buffer, int 
 		flags = (buffer[position + 7] << 8) | buffer[position + 8];
 
 		slowlane_log(3, "OpenTV Channel: Service: %i Type: %i Channel: %i User: %i Flags: %x", service_id, type, channel_id, user_id, flags);
+
+		our_channel = opentv_channel_new();
+		our_channel->transport_id = transport_id;
+		our_channel->original_network_id = original_network_id;
+		our_channel->bouquet = bouquet;
+		our_channel->service_id = service_id;
+		our_channel->type = type;
+		our_channel->channel_number = channel_id;
+		our_channel->user_number = user_id;
+		our_channel->flags = flags;
+		our_channel->region = region;
+
+		opentv_channel_add(bouquet, our_channel);
 
 		position += 9;
 	}

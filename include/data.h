@@ -25,10 +25,12 @@ typedef struct tSectionTracking {
 } SectionTracking;
 
 /* Entries required for storing BAT details. */
-
 typedef struct tOpenTVChannel {
 	/* Linked List */
 	struct tOpenTVChannel	*next;
+
+	/* Reference Primarly for Building */
+	struct tBouquet		*bouquet;
 
 	/* Details About OpenTVChannel */
 	unsigned short	transport_id;
