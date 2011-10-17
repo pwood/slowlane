@@ -1,0 +1,27 @@
+Sky advertise multiple bouquet's in the BAT, usually split by purpose and 
+general location. In order to obtain a full channel list only one of these
+is required.
+
+Prefix
+------
+DTH - Domestic Television Home, Standard Definition (Guess)
+HD - High Definition (Sky HD, if you have the entitlements and a DVB-S2 card)
+Commerical (Sky for Pubs and other public venues)
+
+Output as of 13th of October 2011
+---------------------------------
+4096,BSkyB Bouquet
+4097,BSkyB Bouquet 1 - DTH England
+4098,BSkyB Bouquet 2 - DTH Scotland
+4099,BSkyB Bouquet 3 - DTH Wales
+4100,BSkyB Bouquet 4 - DTH Other
+4101,BSkyB Bouquet 5 - HD England
+4102,BSkyB Bouquet 6 - HD Scotland
+4103,BSkyB Bouquet 7 - HD Wales
+4104,BSkyB Bouquet 8 - HD Other
+4105,BSkyB Bouquet 9 - Commercial England
+4106,BSkyB Bouquet 10 - Commercial Scotland
+4107,BSkyB Bouquet 11 - Commercial Wales
+4108,BSkyB Bouquet 12 - Commercial Other
+4109,BSkyB Bouquet 13 - Test
+4110,BSkyB Bouquet 14 - Interactive Test

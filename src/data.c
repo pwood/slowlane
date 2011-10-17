@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "slowlane.h"
 #include "data.h"
 
 Network *network_list = NULL;
@@ -184,4 +185,74 @@ int section_tracking_check (SectionTracking *section_tracking) {
 	}
 
 	return 1;
+}
+
+Bouquet * filter_data (int filter_bouquet_id, unsigned char filter_region_count, unsigned char *filter_region, int filter_dvbs, int filter_hd, int filter_user_number) {
+	/* Temporary variables. */
+	Bouquet *final_bouquet;
+	Bouquet *bouquet;
+	OpenTVChannel *channel, *next_channel;
+	int i = 0, done = 0;
+
+	/* Create our bouquet with everything we need. */
+	final_bouquet = bouquet_new();
+
+	/* Process BAT/SMT data to form channnel list. */
+	for (bouquet = bouquet_list; bouquet != NULL; bouquet = bouquet->next) {
+		if (filter_bouquet_id == 0 || filter_bouquet_id == bouquet->bouquet_id) {
+			for (channel = bouquet->channels; channel != NULL;) {
+				next_channel = channel->next;
+				done = 0;
+
+				if (filter_region_count) {
+					for (i = 0; i < filter_region_count; i++) {
+						if (filter_region[i] == channel->region) {
+							done = 1;
+						}
+					}
+				} else {
+					done = 1;
+				}
+
+				if (done) {
+					channel->transport = transport_get_with_original_network_id(channel->original_network_id, channel->transport_id);
+
+					if (!channel->transport) {
+						slowlane_log(1, "Could not find transport %i on network %i for bouquet %i and service %i.", channel->transport_id, channel->original_network_id, bouquet->bouquet_id, channel->service_id);
+					} else {
+						if (channel->transport->modulation_system >= filter_dvbs) {
+							slowlane_log(3, "Transport %i is a modulation system of %i, however program running in DVB-S%i mode.", channel->transport->transport_id, channel->transport->modulation_system, filter_dvbs);
+						} else {
+							if (channel->transport->frequency < 1000000 || channel->transport->frequency > 1400000) {
+								slowlane_log(2, "Transport %i has frequency (%i) outside of the Ku band, ignoring as DVB-S cards can't tune it.", channel->transport->transport_id, channel->transport->frequency);
+							} else {
+								channel->service = service_get(channel->transport, channel->service_id);
+
+								if (!channel->service) {
+									slowlane_log(1, "Could not find service %i on network %i for bouquet %i and transport %i.", channel->service_id, channel->original_network_id, bouquet->bouquet_id, channel->transport_id);
+								} else {
+									if (channel->service->type == 1 || channel->service->type == 2 || channel->service->type == 4 || channel->service->type == 5 || channel->service->type == 25) {
+										if (channel->service->type == 25 && !filter_hd) {
+											slowlane_log(3, "Ignoring service %i:%i as is HD, running not in HD mode.", channel->service->service_id, channel->transport->transport_id);
+										} else {
+											if (channel->user_number > filter_user_number) {
+												slowlane_log(3, "Ignoring service %i:%i as user number %i is above %i.", channel->service->service_id, channel->transport->transport_id, channel->user_number, filter_user_number);
+											} else {
+												channel->next = NULL;
+												opentv_channel_add(final_bouquet, channel);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+
+				channel = next_channel;
+			}
+		}
+	}
+
+	return final_bouquet;
 }

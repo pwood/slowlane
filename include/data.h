@@ -29,8 +29,10 @@ typedef struct tOpenTVChannel {
 	/* Linked List */
 	struct tOpenTVChannel	*next;
 
-	/* Reference Primarly for Building */
+	/* Reference Primarly for Building and later reference. */
 	struct tBouquet		*bouquet;
+	struct tService		*service;
+	struct tTransport	*transport;
 
 	/* Details About OpenTVChannel */
 	unsigned short	transport_id;
@@ -144,5 +146,6 @@ void opentv_channel_add (Bouquet *bouquet_ptr, OpenTVChannel *new_ptr);
 OpenTVChannel * opentv_channel_new (void);
 
 int section_tracking_check (SectionTracking *section_tracking);
+Bouquet * filter_data (int filter_bouquet_id, unsigned char filter_region_count, unsigned char *filter_region, int filter_dvbs, int filter_hd, int filter_user_number);
 
 #endif
